@@ -2,6 +2,7 @@ package com.example.todoone.fragments.list
 
 import android.app.AlertDialog
 import android.os.Bundle
+import android.util.Log
 import android.view.*
 import android.widget.Toast
 import androidx.fragment.app.Fragment
@@ -16,10 +17,12 @@ import com.example.todoone.data.viewmodel.ToDoViewModel
 import com.example.todoone.databinding.FragmentListBinding
 import com.example.todoone.fragments.SharedViewModel
 import com.example.todoone.fragments.list.adapter.ListAdapter
+import com.example.todoone.utils.hideKeyboard
+import com.example.todoone.utils.observeOnce
 import com.google.android.material.snackbar.Snackbar
 import jp.wasabeef.recyclerview.animators.SlideInUpAnimator
 
-class ListFragment : Fragment() {
+class ListFragment : Fragment(), SearchView.OnQueryTextListener {
 
     private val mToDoViewModel: ToDoViewModel by viewModels()
     private val mSharedViewModel: SharedViewModel by viewModels()
@@ -30,8 +33,8 @@ class ListFragment : Fragment() {
     private val adapter: ListAdapter by lazy { ListAdapter() }
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+            inflater: LayoutInflater, container: ViewGroup?,
+            savedInstanceState: Bundle?
     ): View {
         // Data binding
         _binding = FragmentListBinding.inflate(inflater, container, false)
@@ -49,6 +52,9 @@ class ListFragment : Fragment() {
 
         // Set Menu
         setHasOptionsMenu(true)
+
+        // Hide soft keyboard
+        hideKeyboard(requireActivity())
 
         return binding.root
     }
@@ -82,8 +88,8 @@ class ListFragment : Fragment() {
 
     private fun restoreDeletedData(view: View, deletedItem: ToDoData) {
         val snackBar = Snackbar.make(
-            view, "Deleted '${deletedItem.title}'",
-            Snackbar.LENGTH_LONG
+                view, "Deleted '${deletedItem.title}'",
+                Snackbar.LENGTH_LONG
         )
         snackBar.setAction("Undo") {
             mToDoViewModel.insertData(deletedItem)
@@ -97,6 +103,7 @@ class ListFragment : Fragment() {
         val search = menu.findItem(R.id.menu_search)
         val searchView = search.actionView as? SearchView
         searchView?.isSubmitButtonEnabled = true
+        searchView?.setOnQueryTextListener(this)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -108,15 +115,40 @@ class ListFragment : Fragment() {
         return super.onOptionsItemSelected(item)
     }
 
+    override fun onQueryTextSubmit(query: String?): Boolean {
+        if (query != null) {
+            searchThroughDatabase(query)
+        }
+        return true
+    }
+
+    override fun onQueryTextChange(query: String?): Boolean {
+        if (query != null) {
+            searchThroughDatabase(query)
+        }
+        return true
+    }
+
+    private fun searchThroughDatabase(query: String) {
+        val searchQuery = "%$query%"
+
+        mToDoViewModel.searchDatabase(searchQuery).observeOnce(viewLifecycleOwner, { list ->
+            list?.let {
+                Log.d("ListFragment", "searchThroughDatabase")
+                adapter.setData(it)
+            }
+        })
+    }
+
     // Show AlertDialog to Confirm Removal of All Items from Database Table
     private fun confirmRemoval() {
         val builder = AlertDialog.Builder(requireContext())
         builder.setPositiveButton("Yes") { _, _ ->
             mToDoViewModel.deleteAll()
             Toast.makeText(
-                requireContext(),
-                "Successfully Removed Everything!",
-                Toast.LENGTH_SHORT
+                    requireContext(),
+                    "Successfully Removed Everything!",
+                    Toast.LENGTH_SHORT
             ).show()
         }
         builder.setNegativeButton("No") { _, _ -> }
