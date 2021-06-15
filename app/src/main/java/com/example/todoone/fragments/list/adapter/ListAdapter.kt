@@ -6,6 +6,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.example.todoone.data.models.ToDoData
 import com.example.todoone.databinding.RowLayoutBinding
+import java.util.*
 
 class ListAdapter : RecyclerView.Adapter<ListAdapter.MyViewHolder>() {
 
@@ -14,7 +15,9 @@ class ListAdapter : RecyclerView.Adapter<ListAdapter.MyViewHolder>() {
     class MyViewHolder(private val binding: RowLayoutBinding) : RecyclerView.ViewHolder(binding.root){
 
         fun bind(toDoData: ToDoData){
+            val random = Random()
             binding.toDoData = toDoData
+            binding.testString = "Random Number : " + random.nextInt(10000).toString()
             binding.executePendingBindings()
         }
         companion object{
